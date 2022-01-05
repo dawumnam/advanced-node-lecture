@@ -1005,3 +1005,72 @@ Page.prototype.login = async function () {
 ```
 
 Notice now this is used as page instance is calling this function
+
+2. A proxy, which combines different classes in to single instance
+   Final code is as follows
+   ./tests/helpers/page.js
+
+```javascript
+const puppeteer = require("puppeteer");
+const userFactory = require("../factories/userFactory");
+const sessionFactory = require("../factories/sessionFactory");
+
+class CustomPage {
+  static async build() {
+    const browser = await puppeteer.launch({
+      headless: true,
+    });
+    const page = await browser.newPage();
+    const customPage = new CustomPage(page, browser);
+    return new Proxy(customPage, {
+      get: function (target, property) {
+        return browser[property] || page[property] || target[property];
+      },
+    });
+  }
+  constructor(page, browser) {
+    this.page = page;
+    this.browser = browser;
+  }
+
+  async login() {
+    const user = await userFactory();
+    const { session, sessionsig } = sessionFactory(user);
+
+    await this.page.setCookie(
+      {
+        name: "session",
+        value: session,
+        httpOnly: true,
+        expires: Date.now() + 1000 * 60 * 10,
+      },
+      {
+        name: "session.sig",
+        value: sessionsig,
+        httpOnly: true,
+        expires: Date.now() + 1000 * 60 * 10,
+      }
+    );
+    await this.page.goto("http://localhost:3000");
+    await this.page.waitFor('a[href="/auth/logout"]');
+  }
+
+  async getContentsOf(selector) {
+    return await this.page.$eval(selector, (el) => el.innerHTML);
+  }
+}
+
+module.exports = CustomPage;
+```
+
+1. Now when you call CustomPage.build(), it returns a proxy that functions as combined instance of browser, page, and our customPage
+2. By attaching login and getContentsOf functions to customPage class, we can reduce our logic to reusable and human redable way.
+3. When we want to add furthur modification or feature to page class, we can simply add it to customPage class and call it using Proxy.
+4. One gotcha is that when multiple classes in the proxy has functions with identical name, the order in return statement matters.
+5. For example,
+
+```javascript
+return browser[property] || page[property] || target[property];
+```
+
+both page and browser has close() function. So if we call proxy.close(), the close function in the browser class will be executed first.
