@@ -879,7 +879,7 @@ test.only("when signed in, shows logout button", async () => {
 });
 ```
 
-Refactoring with factory
+### Refactoring with factory
 
 1. Factories are helper functions to generate a resource soley for use in testing
 2. In our case we need a factories for generating session, and user
@@ -973,7 +973,8 @@ await page.goto("http://localhost:3000");
 await page.waitFor('a[href="/auth/logout"]');
 ```
 
-Refactoring Login Logic in Test Method
+### Refactoring Login Logic in Test Method
+
 There are two suggested method of refactoring the login flow
 
 1. Just like we did in cache, we can attach new function to instance of Page class
